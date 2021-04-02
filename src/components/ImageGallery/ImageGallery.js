@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import s from './ImageGallery.module.css';
 import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
+import Searchbar from '../Searchbar/Searchbar';
 import ImageGalleryItem from '../ImageGalleryItem/ImageGalleryItem';
 import Button from '../Button/Button';
 import Spinner from '../Spinner/Spinner';
 import pixabayAPI from '../../services/pixabay-api';
 import Modal from '../Modal/Modal';
 
-
-
-export default function ImageGallery ({ query }) {
-    const [items, seItems] = useState([]);
+export default function ImageGallery() {
+    const [query, setQuery] = useState('');
+    const [items, setItems] = useState([]);
     const [total, setTotal] = useState(null);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -22,7 +22,13 @@ export default function ImageGallery ({ query }) {
             alt: "",
     });
     
+    const perPage = 12;
+
     useEffect(() => {
+        if (!query) {
+        return;
+        }
+
         const fetch = (query) => {
             setLoading(true);
 
@@ -34,9 +40,8 @@ export default function ImageGallery ({ query }) {
                     } else if (page === 1) {
                         toast.error(`${items.total} pictures is found.`)
                     }
-                    seItems(prevItems => [...prevItems, ...items.hits]);
+                    setItems(prevItems => [...prevItems, ...items.hits]);
                     setTotal(items.total);
-                    setPage(prevPage => prevPage + 1)
                 })
                 .catch(error => {
                     toast.error(error.message);
@@ -52,29 +57,25 @@ export default function ImageGallery ({ query }) {
         };
 
        fetch(query);
-},
-[query]);
+    }, [page, query]);
 
-    const perPage = 12;
+    
     const numberOfPages = total / perPage;
 
-    // async componentDidUpdate(prevProps) {
-    //     if (prevProps.query !== this.props.query ) {
-    //         await this.setState({ items: [], page: 1 });
-    //         this.fetch(this.props.query);
-    //    }
-    // }
+    const updatePage = () => {
+        setPage(prevPage => prevPage + 1);
+    };
+    
+    const onChangeQuery = (query) => {
+        setQuery(query);
+        setPage(1);
+        setItems([]);
+        setError(null);
+    };
 
-    const toggleModal = () => {
-        setShowModal(({showModal}) => ({
-            showModal: !showModal
-        }))
-    }
-
-    const  handleButtonClick = () => {
-        fetch(query);
-        console.log('Hello')
-    }
+    const toggleModal = useCallback(() => {
+        setShowModal(prevShowModal => !prevShowModal);
+    }, []);
     
     const  handleGalleryItemClick = (src, alt) => {
         setLargeImage({ src, alt });
@@ -82,7 +83,8 @@ export default function ImageGallery ({ query }) {
     }
 
         return (
-        <>
+            <>
+            <Searchbar onSubmit={onChangeQuery} />
             {items.length > 0 &&
                 (<ul className={s.ImageGallery}>
                 {items.map(({ webformatURL, largeImageURL, tags }, index) => (
@@ -95,7 +97,12 @@ export default function ImageGallery ({ query }) {
                         </li>))}
                     </ul>)}
                 
-            {loading && <Spinner/>}
+            {loading && page === 1 && (
+                            <div className={s.SpinnerCentered}>
+                                <Spinner />
+                    </div>)}
+                
+            {loading && page !== 1 && <Spinner />}
                                 
             {showModal &&
                 (<Modal
@@ -103,7 +110,7 @@ export default function ImageGallery ({ query }) {
                         onClose={toggleModal}
                     />)}
                             
-            {page - 1 < numberOfPages && !loading && (<Button onIncrement={() => handleButtonClick()} />)}
+            {page < numberOfPages && !loading && (<Button onIncrement={updatePage} />)}
         </>
         )    
     }
