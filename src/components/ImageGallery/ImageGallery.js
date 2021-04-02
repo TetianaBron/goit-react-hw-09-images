@@ -1,95 +1,86 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import s from './ImageGallery.module.css';
 import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
 import ImageGalleryItem from '../ImageGalleryItem/ImageGalleryItem';
 import Button from '../Button/Button';
-import "react-loader-spinner/dist/loader/css/react-spinner-loader.css";
 import Spinner from '../Spinner/Spinner';
 import pixabayAPI from '../../services/pixabay-api';
 import Modal from '../Modal/Modal';
 
-const perPage = 12;
 
-export default class ImageGallery extends Component {
-    static propTypes = {
-    query: PropTypes.string.isRequired,
-    };
-    
-    state = {
-        items: [],
-        total: null,
-        error: null,
-        loading: false,
-        page: 1,
-        showModal: false,
 
-        largeImage: {
+export default function ImageGallery ({ query }) {
+    const [items, seItems] = useState([]);
+    const [total, setTotal] = useState(null);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [showModal, setShowModal] = useState(false);
+    const [largeImage, setLargeImage] = useState({
             src: "",
             alt: "",
-        },
-    };
+    });
     
-    async componentDidUpdate(prevProps) {
-        if (prevProps.query !== this.props.query ) {
-            await this.setState({ items: [], page: 1 });
-            this.fetch(this.props.query);
-       }
-    }
-  
-   
+    useEffect(() => {
+        const fetch = (query) => {
+            setLoading(true);
 
-    fetch = (query) => {
-        this.setState({ loading: true });
+            pixabayAPI
+                .fetchImg(query, page, perPage)
+                .then((items) => {
+                    if (items.total === 0) {
+                        toast.error(`${query} is not found. Try another one!`);
+                    } else if (page === 1) {
+                        toast.error(`${items.total} pictures is found.`)
+                    }
+                    seItems(prevItems => [...prevItems, ...items.hits]);
+                    setTotal(items.total);
+                    setPage(prevPage => prevPage + 1)
+                })
+                .catch(error => {
+                    toast.error(error.message);
+                    setError(error.message);
+                })
+                .finally(() => {
+                    setLoading(false);
+                    window.scrollTo({
+                        top: document.documentElement.scrollHeight,
+                        behavior: 'smooth',
+                    });
+                });
+        };
 
-        pixabayAPI
-            .fetchImg(query, this.state.page, perPage)
-            .then((items) => {
-                if (items.total === 0) {
-                    toast.error(`${query} is not found. Try another one!`);
-                } else if (this.state.page === 1) {
-                    toast.error(`${items.total} pictures is found.`)
-                }
-                this.setState(prevState => ({
-                    items: [...prevState.items, ...items.hits],
-                    total: items.total,
-                    page: prevState.page + 1,
-                }))
-            })
-            .catch(error => {
-                 toast.error(error.message);
-                 this.setState({ error: error.message });
-            })
-         .finally(() => {
-             this.setState({ loading: false });
-             window.scrollTo({
-                 top: document.documentElement.scrollHeight,
-                 behavior: 'smooth',
-            });
-         });
-    }
-    
-    toggleModal = () => {
-        this.setState(({showModal}) => ({
+       fetch(query);
+},
+[query]);
+
+    const perPage = 12;
+    const numberOfPages = total / perPage;
+
+    // async componentDidUpdate(prevProps) {
+    //     if (prevProps.query !== this.props.query ) {
+    //         await this.setState({ items: [], page: 1 });
+    //         this.fetch(this.props.query);
+    //    }
+    // }
+
+    const toggleModal = () => {
+        setShowModal(({showModal}) => ({
             showModal: !showModal
         }))
     }
 
-    handleButtonClick = () => {
-        this.fetch(this.props.query);
+    const  handleButtonClick = () => {
+        fetch(query);
+        console.log('Hello')
     }
     
-    handleGalleryItemClick = (src, alt) => {
-            this.setState({
-                largeImage: { src, alt },
-            });
-            this.toggleModal();
+    const  handleGalleryItemClick = (src, alt) => {
+        setLargeImage({ src, alt });
+        toggleModal();
     }
 
-    render() {
-        const { items, showModal, loading, largeImage, page, total } = this.state;
-        const numberOfPages = total / perPage;
- 
         return (
         <>
             {items.length > 0 &&
@@ -100,7 +91,7 @@ export default class ImageGallery extends Component {
                               webformatURL={webformatURL}
                               largeImageURL={largeImageURL}
                               tags={tags}
-                              clickOnItem={() => this.handleGalleryItemClick(largeImageURL, tags)} />
+                              clickOnItem={() => handleGalleryItemClick(largeImageURL, tags)} />
                         </li>))}
                     </ul>)}
                 
@@ -109,12 +100,15 @@ export default class ImageGallery extends Component {
             {showModal &&
                 (<Modal
                         image={largeImage}
-                        onClose={this.toggleModal}
+                        onClose={toggleModal}
                     />)}
                             
-            {page - 1 < numberOfPages && !loading && (<Button onIncrement={() => this.handleButtonClick()} />)}
+            {page - 1 < numberOfPages && !loading && (<Button onIncrement={() => handleButtonClick()} />)}
         </>
         )    
     }
-}
+
             
+ImageGallery.propTypes = {
+    query: PropTypes.string.isRequired,
+};

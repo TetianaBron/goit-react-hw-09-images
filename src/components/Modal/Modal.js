@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import s from './Modal.module.css';
 import { createPortal } from 'react-dom';
 import PropTypes from "prop-types";
@@ -7,46 +7,35 @@ import Img from '../../images/No_Image-512.webp';
 
 const modalRoot = document.querySelector('#modal-root');
 
-export default class Modal extends Component {
-    static propTypes = {
-        image: PropTypes.object,
-        onClose: PropTypes.func,
-    };
+export default function Modal ({ onClose, image}) {
+    const { src, alt } = image;
+    const [isLoading, setIsLoading] = useState(true);
 
-    state = {   
-        isLoading: true,
-    }; 
+    useEffect(() => {
+          const handleKeyDown = e => {
+            if (e.code === 'Escape') {
+            onClose();
+            }
+          }
+        window.addEventListener('keydown', handleKeyDown);
 
-    componentDidMount() {
-        window.addEventListener('keydown', this.handleKeyDown);
-    }
-
-    componentWillUnmount(){
-        window.removeEventListener('keydown', this.handleKeyDown);
-    }
-
-    handleKeyDown = e => {
-    if (e.code === 'Escape') {
-        this.props.onClose();
+        return () => {
+             window.removeEventListener('keydown', handleKeyDown);
         }
-    }
+    }, [onClose]);
 
-    handleBackdropClick = e => {
+    const handleBackdropClick = e => {
         if (e.currentTarget === e.target) {
-            this.props.onClose();
+            onClose();
         }
     }
-    onLoad = () => {
-        this.setState({ isLoading: false });
+    const onLoad = () => {
+        setIsLoading(false);
     }
-
-    render() {
-        const { src, alt } = this.props.image;
-        const { isLoading } = this.state;
         
-        return createPortal(
+    return createPortal(
             <>
-            <div className={s.Overlay} onClick={this.handleBackdropClick}>
+            <div className={s.Overlay} onClick={handleBackdropClick}>
                 <div className={s.Modal}>
                          
                         {isLoading && (
@@ -55,12 +44,16 @@ export default class Modal extends Component {
                             </div>)}
                         
                     <img
-                        onLoad={this.onLoad}
+                        onLoad={onLoad}
                         src={src ? src : Img}
                         alt={alt} />
                 </div>
             </div>
             </>,
             modalRoot);
-    }
 }
+
+Modal.propTypes = {
+    image: PropTypes.object,
+    onClose: PropTypes.func,
+};
