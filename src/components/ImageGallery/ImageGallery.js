@@ -16,13 +16,7 @@ export default function ImageGallery() {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
-    const [showModal, setShowModal] = useState(false);
-    const [largeImage, setLargeImage] = useState({
-            src: "",
-            alt: "",
-    });
-    
-    const perPage = 12;
+    const [largeImage, setLargeImage] = useState(null);
 
     useEffect(() => {
         if (!query) {
@@ -33,12 +27,12 @@ export default function ImageGallery() {
             setLoading(true);
 
             pixabayAPI
-                .fetchImg(query, page, perPage)
+                .fetchImg(query, page)
                 .then((items) => {
                     if (items.total === 0) {
                         toast.error(`${query} is not found. Try another one!`);
                     } else if (page === 1) {
-                        toast.error(`${items.total} pictures is found.`)
+                        toast.success(`${items.total} pictures is found.`)
                     }
                     setItems(prevItems => [...prevItems, ...items.hits]);
                     setTotal(items.total);
@@ -60,7 +54,7 @@ export default function ImageGallery() {
     }, [page, query]);
 
     
-    const numberOfPages = total / perPage;
+    const numberOfPages = total / pixabayAPI.INAGES_PER_PAGE;
 
     const updatePage = () => {
         setPage(prevPage => prevPage + 1);
@@ -74,12 +68,11 @@ export default function ImageGallery() {
     };
 
     const toggleModal = useCallback(() => {
-        setShowModal(prevShowModal => !prevShowModal);
+        setLargeImage(null);
     }, []);
     
     const  handleGalleryItemClick = (src, alt) => {
         setLargeImage({ src, alt });
-        toggleModal();
     }
 
         return (
@@ -104,7 +97,7 @@ export default function ImageGallery() {
                 
             {loading && page !== 1 && <Spinner />}
                                 
-            {showModal &&
+            {largeImage &&
                 (<Modal
                         image={largeImage}
                         onClose={toggleModal}
@@ -117,5 +110,5 @@ export default function ImageGallery() {
 
             
 ImageGallery.propTypes = {
-    query: PropTypes.string.isRequired,
+    query: PropTypes.string,
 };
